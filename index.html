@@ -77,7 +77,7 @@
     }
     .seg-btn {
       flex: 1; padding: 7px 4px; border: none; background: none;
-      border-radius: 8px; font-size: 13px; font-weight: 600;
+      border-radius: 8px; font-size: 12px; font-weight: 600;
       color: var(--gray); cursor: pointer; transition: all .2s;
       font-family: inherit;
     }
@@ -136,7 +136,7 @@
     }
     .task-title.done { text-decoration: line-through; color: var(--gray); }
     .task-meta { margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .task-note { font-size: 13px; color: var(--gray); flex-basis: 100%; }
+    .task-note { font-size: 13px; color: var(--gray); flex-basis: 100%; white-space: pre-wrap; word-break: break-word; }
     .task-due {
       font-size: 12px; padding: 2px 8px; border-radius: 20px;
       font-weight: 500;
@@ -198,7 +198,12 @@
       border-radius: 20px 20px 0 0;
       padding: 0 0 calc(var(--safe-bottom) + 16px);
       animation: slideUp .3s cubic-bezier(0.32,0.72,0,1);
-      max-height: 90vh; overflow-y: auto;
+      max-height: 70vh; overflow-y: auto;
+      transition: max-height .3s cubic-bezier(0.32,0.72,0,1), border-radius .3s;
+    }
+    .sheet.expanded {
+      max-height: 100vh;
+      border-radius: 0;
     }
     @keyframes slideUp {
       from { transform: translateY(100%) }
@@ -206,12 +211,23 @@
     }
     .sheet-handle {
       width: 36px; height: 5px; border-radius: 3px;
-      background: var(--gray4); margin: 10px auto 16px;
+      background: var(--gray4); margin: 10px auto 0;
+    }
+    .sheet-title-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px 16px; border-bottom: 1px solid var(--separator);
     }
     .sheet-title {
       font-size: 18px; font-weight: 700;
-      padding: 0 20px 16px; border-bottom: 1px solid var(--separator);
     }
+    .sheet-expand-btn {
+      background: none; border: none; color: var(--blue);
+      font-size: 22px; cursor: pointer; padding: 4px;
+      line-height: 1; display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px;
+      transition: background .15s;
+    }
+    .sheet-expand-btn:active { background: var(--gray5); }
 
     .form-section { padding: 16px 20px 0; }
     .form-label { font-size: 13px; color: var(--gray); font-weight: 500; margin-bottom: 6px; }
@@ -224,7 +240,12 @@
     .form-input:focus, .form-textarea:focus {
       background: var(--gray5);
     }
-    .form-textarea { resize: none; height: 80px; }
+    .form-textarea {
+      resize: none; height: 140px;
+      transition: height .3s cubic-bezier(0.32,0.72,0,1);
+      line-height: 1.6;
+    }
+    .form-textarea.expanded-area { height: 45vh; }
     .form-row { display: flex; gap: 12px; }
     .form-row .form-col { flex: 1; }
 
@@ -293,6 +314,12 @@
       font-weight: 600; margin-left: 8px;
     }
 
+    /* Tab hint */
+    .tab-hint {
+      font-size: 11px; color: var(--gray); padding: 4px 20px 0;
+      line-height: 1.4;
+    }
+
     /* Transition */
     .task-item { animation: itemIn .2s ease; }
     @keyframes itemIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
@@ -320,11 +347,13 @@
   <!-- Segment -->
   <div class="segment-wrap">
     <div class="segment">
-      <button class="seg-btn active" onclick="switchTab('today',this)">今日</button>
-      <button class="seg-btn" onclick="switchTab('all',this)">すべて</button>
-      <button class="seg-btn" onclick="switchTab('done',this)">完了済み</button>
+      <button class="seg-btn active" onclick="switchTab('focus',this)">🎯 フォーカス</button>
+      <button class="seg-btn" onclick="switchTab('scheduled',this)">📅 予定</button>
+      <button class="seg-btn" onclick="switchTab('someday',this)">💡 いつか</button>
+      <button class="seg-btn" onclick="switchTab('done',this)">✅ 完了</button>
     </div>
   </div>
+  <div class="tab-hint" id="tabHint"></div>
 
   <!-- Stats -->
   <div class="stats-bar" id="statsBar" style="margin-top:12px"></div>
@@ -345,14 +374,17 @@
 <div class="overlay" id="taskOverlay" onclick="handleOverlayClick(event)">
   <div class="sheet" id="taskSheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title" id="sheetTitle">タスクを追加<span class="editing-badge" id="editingBadge" style="display:none">編集中</span></div>
-    <div class="form-section">
-      <div class="form-label">タイトル *</div>
-      <input class="form-input" id="taskTitle" placeholder="タスクのタイトル" maxlength="80" autocomplete="off">
+    <div class="sheet-title-row">
+      <div>
+        <span class="sheet-title" id="sheetTitle">タスクを追加</span>
+        <span class="editing-badge" id="editingBadge" style="display:none">編集中</span>
+      </div>
+      <button class="sheet-expand-btn" onclick="toggleSheetExpand()" id="expandBtn" title="拡大">⤢</button>
     </div>
+
     <div class="form-section">
-      <div class="form-label">メモ</div>
-      <textarea class="form-textarea" id="taskNote" placeholder="詳細・メモ（任意）"></textarea>
+      <div class="form-label">内容（1行目がタイトルとして表示されます）</div>
+      <textarea class="form-textarea" id="taskContent" placeholder="タスクのタイトルをここに入力&#10;2行目以降はメモとして表示されます"></textarea>
     </div>
     <div class="form-section">
       <div class="form-row">
@@ -385,7 +417,9 @@
 <div class="overlay" id="listOverlay" onclick="handleListOverlayClick(event)">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">リスト管理</div>
+    <div class="sheet-title-row">
+      <span class="sheet-title">リスト管理</span>
+    </div>
     <div class="form-section">
       <div class="form-label">リストを選択</div>
       <div class="list-chips" id="listChips"></div>
@@ -403,17 +437,25 @@
 <script>
 let tasks = [];
 let lists = ['個人', '仕事', '買い物'];
-let currentTab = 'today';
+let currentTab = 'focus';
 let editingId = null;
 let currentPriority = 'medium';
 let currentFilterList = null;
+let sheetExpanded = false;
 
 const STORAGE_KEY = 'taskflow_tasks';
 const LISTS_KEY = 'taskflow_lists';
 
 function load() {
   try {
-    tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    let raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    // migrate old format: title + note → content
+    tasks = raw.map(t => {
+      if (!t.content) {
+        t.content = (t.title || '') + (t.note ? '\n' + t.note : '');
+      }
+      return t;
+    });
     const saved = JSON.parse(localStorage.getItem(LISTS_KEY) || 'null');
     if (saved) lists = saved;
   } catch(e) { tasks = []; }
@@ -427,6 +469,7 @@ function save() {
 function today() {
   return new Date().toISOString().slice(0,10);
 }
+
 function dateLabel(due) {
   if (!due) return null;
   const t = today();
@@ -434,6 +477,43 @@ function dateLabel(due) {
   if (due === t) return { cls: 'today', text: '今日' };
   const d = new Date(due);
   return { cls: 'future', text: `${d.getMonth()+1}/${d.getDate()}` };
+}
+
+/* ── Display helpers (① content → title + note) ── */
+function getDisplayTitle(task) {
+  const c = (task.content || '').trim();
+  if (!c) return '（内容なし）';
+  return c.split('\n')[0].slice(0, 80);
+}
+
+function getDisplayNote(task) {
+  const c = (task.content || '').trim();
+  const lines = c.split('\n');
+  return lines.slice(1).join('\n').trim();
+}
+
+/* ── Tab classification (③) ── */
+// フォーカス: 高優先度 OR 期限切れ OR 今日期限
+// 予定: 期限あり（将来）かつ高優先でない
+// いつか: 期限なし かつ 高優先でない
+// 完了: done
+
+const TAB_HINTS = {
+  focus: '高優先度・期限切れ・今日期限のタスクを集約しています',
+  scheduled: '将来の期限が設定されているタスクです',
+  someday: '期限なし・高優先でないタスクです。気が向いたらどうぞ',
+  done: '完了したタスクの一覧です',
+};
+
+function tabOf(t) {
+  if (t.done) return 'done';
+  const td = today();
+  const isHighPri = t.priority === 'high';
+  const isOverdue = t.due && t.due < td;
+  const isToday = t.due === td;
+  if (isHighPri || isOverdue || isToday) return 'focus';
+  if (t.due && t.due > td) return 'scheduled';
+  return 'someday';
 }
 
 function render() {
@@ -444,23 +524,22 @@ function render() {
 
 function renderStats() {
   const total = tasks.filter(t => !t.done).length;
-  const todayTasks = tasks.filter(t => !t.done && t.due === today()).length;
+  const focusCount = tasks.filter(t => tabOf(t) === 'focus').length;
   const overdue = tasks.filter(t => !t.done && t.due && t.due < today()).length;
   const done = tasks.filter(t => t.done).length;
   document.getElementById('statsBar').innerHTML = `
     <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">未完了</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${todayTasks}</div><div class="stat-label">今日の期限</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--red)">${overdue}</div><div class="stat-label">期限切れ</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--red)">${focusCount}</div><div class="stat-label">要対応</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${overdue}</div><div class="stat-label">期限切れ</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--green)">${done}</div><div class="stat-label">完了済み</div></div>`;
 }
 
 function renderList() {
+  document.getElementById('tabHint').textContent = TAB_HINTS[currentTab] || '';
   const wrap = document.getElementById('taskListWrap');
-  let filtered = tasks;
-  if (currentTab === 'today') filtered = tasks.filter(t => !t.done && (t.due === today() || t.due < today() || !t.due));
-  else if (currentTab === 'all') filtered = tasks.filter(t => !t.done);
-  else filtered = tasks.filter(t => t.done);
+  let filtered = tasks.filter(t => tabOf(t) === currentTab);
   if (currentFilterList) filtered = filtered.filter(t => t.list === currentFilterList);
+
   const priOrder = { high: 0, medium: 1, low: 2, none: 3 };
   filtered.sort((a,b) => {
     const pa = priOrder[a.priority||'none'], pb = priOrder[b.priority||'none'];
@@ -469,16 +548,20 @@ function renderList() {
     if (a.due) return -1; if (b.due) return 1;
     return b.createdAt - a.createdAt;
   });
+
+  const emptyMsgs = {
+    focus:     { icon: '🎯', title: '対応が必要なタスクはありません', desc: '高優先度・期限切れ・今日期限のタスクがあるとここに表示されます' },
+    scheduled: { icon: '📅', title: '予定タスクはありません', desc: '期限日を設定したタスクがここに表示されます' },
+    someday:   { icon: '💡', title: 'いつかやるタスクはありません', desc: '期限なし・通常優先度のタスクがここに表示されます' },
+    done:      { icon: '🎉', title: '完了済みタスクはありません', desc: 'タスクを完了するとここに表示されます' },
+  };
+
   if (filtered.length === 0) {
-    const msgs = {
-      today: { icon: '🌟', title: '今日のタスクはありません', desc: '右下の＋ボタンでタスクを追加しましょう！' },
-      all: { icon: '✅', title: 'すべて完了！', desc: '新しいタスクを追加しましょう' },
-      done: { icon: '🎉', title: '完了済みタスクはありません', desc: 'タスクを完了するとここに表示されます' },
-    };
-    const m = msgs[currentTab];
+    const m = emptyMsgs[currentTab];
     wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">${m.icon}</div><div class="empty-title">${m.title}</div><div class="empty-desc">${m.desc}</div></div>`;
     return;
   }
+
   const grouped = {};
   filtered.forEach(t => { const key = t.list || 'リストなし'; if (!grouped[key]) grouped[key] = []; grouped[key].push(t); });
   let html = '';
@@ -489,7 +572,17 @@ function renderList() {
       const dueBadge = dl ? `<span class="task-due ${dl.cls}">${dl.text}</span>` : '';
       const priClass = t.priority && t.priority !== 'none' ? t.priority : '';
       const doneClass = t.done ? 'done' : '';
-      html += `<div class="task-item" onclick="editTask('${t.id}')"><div class="task-check ${t.done ? 'done' : priClass}" onclick="toggleDone(event,'${t.id}')"></div><div class="task-body"><div class="task-title ${doneClass}">${escHtml(t.title)}</div><div class="task-meta">${t.note ? `<div class="task-note">${escHtml(t.note)}</div>` : ''}${dueBadge}</div></div><div class="task-actions"><button class="task-del" onclick="deleteTask(event,'${t.id}')">x</button></div></div>`;
+      const displayTitle = escHtml(getDisplayTitle(t));
+      const displayNote = escHtml(getDisplayNote(t));
+      const notePart = displayNote ? `<div class="task-note">${displayNote}</div>` : '';
+      html += `<div class="task-item" onclick="editTask('${t.id}')">
+        <div class="task-check ${t.done ? 'done' : priClass}" onclick="toggleDone(event,'${t.id}')"></div>
+        <div class="task-body">
+          <div class="task-title ${doneClass}">${displayTitle}</div>
+          <div class="task-meta">${notePart}${dueBadge}</div>
+        </div>
+        <div class="task-actions"><button class="task-del" onclick="deleteTask(event,'${t.id}')">×</button></div>
+      </div>`;
     });
     html += '</div>';
   }
@@ -527,46 +620,71 @@ function deleteTask(e, id) {
 function editTask(id) {
   const t = tasks.find(t => t.id === id); if (!t) return;
   editingId = id; currentPriority = t.priority || 'medium';
-  document.getElementById('taskTitle').value = t.title;
-  document.getElementById('taskNote').value = t.note || '';
+  document.getElementById('taskContent').value = t.content || '';
   document.getElementById('taskDue').value = t.due || '';
   populateListSelect(t.list || ''); updatePriorityUI();
-  document.getElementById('sheetTitle').childNodes[0].textContent = 'タスクを編集';
-  document.getElementById('editingBadge').style.display = ''; openSheet();
+  document.getElementById('sheetTitle').textContent = 'タスクを編集';
+  document.getElementById('editingBadge').style.display = '';
+  openSheet();
 }
 
 function openAddSheet() {
   editingId = null; currentPriority = 'medium';
-  document.getElementById('taskTitle').value = '';
-  document.getElementById('taskNote').value = '';
+  document.getElementById('taskContent').value = '';
   document.getElementById('taskDue').value = today();
   populateListSelect(''); updatePriorityUI();
-  document.getElementById('sheetTitle').childNodes[0].textContent = 'タスクを追加';
-  document.getElementById('editingBadge').style.display = 'none'; openSheet();
+  document.getElementById('sheetTitle').textContent = 'タスクを追加';
+  document.getElementById('editingBadge').style.display = 'none';
+  openSheet();
 }
 
 function openSheet() {
+  sheetExpanded = false;
+  document.getElementById('taskSheet').classList.remove('expanded');
+  document.getElementById('taskContent').classList.remove('expanded-area');
+  document.getElementById('expandBtn').textContent = '⤢';
   document.getElementById('taskOverlay').classList.add('show');
-  setTimeout(() => document.getElementById('taskTitle').focus(), 300);
+  setTimeout(() => document.getElementById('taskContent').focus(), 300);
 }
 
-function closeSheet() { document.getElementById('taskOverlay').classList.remove('show'); editingId = null; }
+function closeSheet() {
+  document.getElementById('taskOverlay').classList.remove('show');
+  editingId = null;
+}
 
 function handleOverlayClick(e) { if (e.target === document.getElementById('taskOverlay')) closeSheet(); }
 
+/* ② シート拡大・縮小 */
+function toggleSheetExpand() {
+  sheetExpanded = !sheetExpanded;
+  document.getElementById('taskSheet').classList.toggle('expanded', sheetExpanded);
+  document.getElementById('taskContent').classList.toggle('expanded-area', sheetExpanded);
+  document.getElementById('expandBtn').textContent = sheetExpanded ? '⤡' : '⤢';
+}
+
 function saveTask() {
-  const title = document.getElementById('taskTitle').value.trim();
-  if (!title) {
-    document.getElementById('taskTitle').focus();
-    document.getElementById('taskTitle').style.border = '2px solid var(--red)';
-    setTimeout(() => document.getElementById('taskTitle').style.border = '', 1000); return;
+  const content = document.getElementById('taskContent').value.trim();
+  if (!content) {
+    document.getElementById('taskContent').focus();
+    document.getElementById('taskContent').style.border = '2px solid var(--red)';
+    setTimeout(() => document.getElementById('taskContent').style.border = '', 1000);
+    return;
   }
   const listVal = document.getElementById('taskList').value;
   if (editingId) {
     const t = tasks.find(t => t.id === editingId);
-    if (t) { t.title = title; t.note = document.getElementById('taskNote').value.trim(); t.due = document.getElementById('taskDue').value; t.priority = currentPriority; t.list = listVal; }
+    if (t) { t.content = content; t.due = document.getElementById('taskDue').value; t.priority = currentPriority; t.list = listVal; }
   } else {
-    tasks.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), title, note: document.getElementById('taskNote').value.trim(), due: document.getElementById('taskDue').value, priority: currentPriority, list: listVal, done: false, createdAt: Date.now(), completedAt: null });
+    tasks.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      content,
+      due: document.getElementById('taskDue').value,
+      priority: currentPriority,
+      list: listVal,
+      done: false,
+      createdAt: Date.now(),
+      completedAt: null
+    });
   }
   save(); closeSheet(); render();
 }
@@ -591,7 +709,9 @@ function closeListSheet() { document.getElementById('listOverlay').classList.rem
 function handleListOverlayClick(e) { if (e.target === document.getElementById('listOverlay')) closeListSheet(); }
 
 function renderListChips() {
-  document.getElementById('listChips').innerHTML = lists.map(l => `<button class="list-chip ${currentFilterList===l?'selected':''}" onclick="toggleFilterList('${escHtml(l)}')">${escHtml(l)}</button>`).join('');
+  document.getElementById('listChips').innerHTML = lists.map(l =>
+    `<button class="list-chip ${currentFilterList===l?'selected':''}" onclick="toggleFilterList('${escHtml(l)}')">${escHtml(l)}</button>`
+  ).join('');
 }
 
 function toggleFilterList(name) { currentFilterList = currentFilterList === name ? null : name; renderListChips(); }
@@ -604,7 +724,6 @@ function addNewList() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('taskOverlay').classList.contains('show')) { if (e.target.tagName !== 'TEXTAREA') saveTask(); }
   if (e.key === 'Escape') { closeSheet(); closeListSheet(); }
 });
 
