@@ -638,12 +638,10 @@ function editTask(id) {
 function shareTask() {
   const content = document.getElementById('taskContent').value.trim();
   if (!content || !navigator.share) return;
-  const lines = content.split('\n');
-  const title = lines[0];
-  const text = lines.slice(1).join('\n').trim();
+  const title = content.split('\n')[0];
   const due = document.getElementById('taskDue').value;
-  const dueText = due ? `\n期限: ${due}` : '';
-  navigator.share({ title, text: (text ? text + '\n' : '') + dueText }).catch(() => {});
+  const text = content + (due ? `\n\n期限: ${due}` : '');
+  navigator.share({ title, text }).catch(() => {});
 }
 
 function openAddSheet() {
