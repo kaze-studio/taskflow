@@ -220,14 +220,15 @@
     .sheet-title {
       font-size: 18px; font-weight: 700;
     }
-    .sheet-expand-btn {
+    .sheet-expand-btn, .sheet-share-btn {
       background: none; border: none; color: var(--blue);
       font-size: 22px; cursor: pointer; padding: 4px;
       line-height: 1; display: flex; align-items: center; justify-content: center;
       width: 32px; height: 32px; border-radius: 8px;
       transition: background .15s;
     }
-    .sheet-expand-btn:active { background: var(--gray5); }
+    .sheet-expand-btn:active, .sheet-share-btn:active { background: var(--gray5); }
+    .sheet-header-btns { display: flex; gap: 4px; align-items: center; }
 
     .form-section { padding: 16px 20px 0; }
     .form-label { font-size: 13px; color: var(--gray); font-weight: 500; margin-bottom: 6px; }
@@ -379,7 +380,12 @@
         <span class="sheet-title" id="sheetTitle">タスクを追加</span>
         <span class="editing-badge" id="editingBadge" style="display:none">編集中</span>
       </div>
-      <button class="sheet-expand-btn" onclick="toggleSheetExpand()" id="expandBtn" title="拡大">⤢</button>
+      <div class="sheet-header-btns">
+        <button class="sheet-share-btn" onclick="shareTask()" id="shareBtn" title="共有" style="display:none">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <button class="sheet-expand-btn" onclick="toggleSheetExpand()" id="expandBtn" title="拡大">⤢</button>
+      </div>
     </div>
 
     <div class="form-section">
@@ -625,7 +631,19 @@ function editTask(id) {
   populateListSelect(t.list || ''); updatePriorityUI();
   document.getElementById('sheetTitle').textContent = 'タスクを編集';
   document.getElementById('editingBadge').style.display = '';
+  document.getElementById('shareBtn').style.display = navigator.share ? '' : 'none';
   openSheet();
+}
+
+function shareTask() {
+  const content = document.getElementById('taskContent').value.trim();
+  if (!content || !navigator.share) return;
+  const lines = content.split('\n');
+  const title = lines[0];
+  const text = lines.slice(1).join('\n').trim();
+  const due = document.getElementById('taskDue').value;
+  const dueText = due ? `\n期限: ${due}` : '';
+  navigator.share({ title, text: (text ? text + '\n' : '') + dueText }).catch(() => {});
 }
 
 function openAddSheet() {
@@ -635,6 +653,7 @@ function openAddSheet() {
   populateListSelect(''); updatePriorityUI();
   document.getElementById('sheetTitle').textContent = 'タスクを追加';
   document.getElementById('editingBadge').style.display = 'none';
+  document.getElementById('shareBtn').style.display = 'none';
   openSheet();
 }
 
